@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;900&family=Outfit:wght@300;400;500;600&display=swap');
+
+        :root {
+            --bg: #050505;
+            --surface: rgba(20, 20, 20, 0.6);
+            --surface-hover: rgba(30, 30, 30, 0.8);
+            --border: rgba(255, 255, 255, 0.08);
+            --accent: #1DB954;
+            --accent-glow: rgba(29, 185, 84, 0.3);
+            --text-main: #FFFFFF;
+            --text-dim: #A1A1AA;
+        }
+
+        * { font-family: 'Outfit', sans-serif; box-sizing: border-box; }
+
+        body {
+            margin: 0;
+            padding: 20px 10px;
+            background: transparent; /* Streamlit dictates background, we blend */
+            color: var(--text-main);
+            overflow-x: hidden;
+        }
+
+        #spotify-player-container {
+            width: 100%;
+            display: flex;
+            justify-content: center;
+            margin-bottom: 40px;
+            position: relative;
+        }
+
+        /* Glassmorphic glow behind the player */
+        #spotify-player-container::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 60%;
+            height: 100%;
+            background: var(--accent);
+            filter: blur(120px);
+            opacity: 0.15;
+            z-index: -1;
+            pointer-events: none;
+        }
+
+        #spotify-player {
+            width: 100%;
+            max-width: 800px;
+            height: 352px;
+            border-radius: 16px;
+            box-shadow: 0 24px 50px rgba(0, 0, 0, 0.5), 0 0 1px var(--border);
+            border: none;
+            background: transparent;
+        }
+
+        .grid-header {
+            font-family: 'Montserrat', sans-serif;
+            font-size: 1.5rem;
+            margin-bottom: 24px;
+            color: #fff;
+            letter-spacing: -0.5px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .grid-header span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: var(--accent);
+            border-radius: 50%;
+            box-shadow: 0 0 12px var(--accent);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+            gap: 24px;
+        }
+
+        .tile {
+            background: var(--surface);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 18px;
+            cursor: pointer;
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            position: relative;
+            z-index: 1;
+        }
+
+        .tile:hover {
+            background: var(--surface-hover);
+            border-color: rgba(255, 255, 255, 0.2);
+            transform: translateY(-8px) scale(1.02);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.6), 0 0 30px var(--accent-glow);
+            z-index: 2;
+        }
+
+        .tile.active {
+            border-color: var(--accent);
+            background: rgba(29, 185, 84, 0.05);
+        }
+
+        .art-box {
+            width: 100%;
+            aspect-ratio: 1/1;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3.5rem;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+            margin-bottom: 16px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .art-box::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(180deg, transparent 50%, rgba(0,0,0,0.6) 100%);
+            border-radius: 12px;
+        }
+
+        .play-overlay {
+            position: absolute;
+            bottom: 12px;
+            right: 12px;
+            width: 44px;
+            height: 44px;
+            background: var(--accent);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transform: translateY(15px);
+            transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+            z-index: 2;
+        }
+
+        .tile:hover .play-overlay {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .play-overlay svg {
+            width: 20px;
+            height: 20px;
+            fill: #000;
+            margin-left: 3px;
+        }
+
+        .duration-badge {
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            background: rgba(0, 0, 0, 0.6);
+            color: #fff;
+            font-size: 0.75rem;
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-weight: 500;
+            backdrop-filter: blur(8px);
+            z-index: 2;
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        .tile h3 {
+            font-family: 'Montserrat', sans-serif;
+            margin: 0;
+            font-size: 1.05rem;
+            color: #fff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            font-weight: 700;
+        }
+
+        .tile p {
+            font-size: 0.85rem;
+            color: var(--text-dim);
+            margin: 6px 0 0 0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        /* Smooth glowing animation for active tile */
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(29, 185, 84, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(29, 185, 84, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(29, 185, 84, 0); }
+        }
+        .tile.active .play-overlay {
+            opacity: 1;
+            transform: translateY(0);
+            animation: pulse 2s infinite;
+        }
+
+        .spotify-btn {
+            display: inline-block;
+            margin-top: -20px;
+            margin-bottom: 30px;
+            padding: 14px 28px;
+            background: #1DB954;
+            color: #000;
+            text-decoration: none;
+            font-weight: 800;
+            border-radius: 30px;
+            font-family: 'Montserrat', sans-serif;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: all 0.3s ease;
+            box-shadow: 0 8px 24px rgba(29, 185, 84, 0.3);
+        }
+        
+        .spotify-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 12px 30px rgba(29, 185, 84, 0.5);
+            background: #1ed760;
+        }
+
+        #spotify-link-container {
+            text-align: center;
+            width: 100%;
+        }
+
+    </style>
+</head>
+<body>
+    <div id="spotify-player-container">
+        <iframe id="yt-player" src="" width="100%" height="352" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>
+    </div>
+
+    <div id="spotify-link-container">
+        <a id="yt-external-link" href="#" target="_blank" class="spotify-btn">🎧 SEARCH FULL SONG ON YOUTUBE</a>
+    </div>
+
+    <div class="grid-header">
+        <span></span> RECOMMENDED FOR YOU
+    </div>
+    
+    <div class="grid" id="main-grid"></div>
+
+    <script>
+        const tracks = TRACKS_JSON_PLACEHOLDER;
+        const colorPalettes = [
+            'linear-gradient(135deg, #FA709A 0%, #FEE140 100%)',
+            'linear-gradient(135deg, #43E97B 0%, #38F9D7 100%)',
+            'linear-gradient(135deg, #667EEA 0%, #764BA2 100%)',
+            'linear-gradient(135deg, #FF0844 0%, #FFB199 100%)',
+            'linear-gradient(135deg, #96E6A1 0%, #D4FC79 100%)',
+            'linear-gradient(135deg, #FDFCFB 0%, #E2D1C3 100%)'
+        ];
+
+        function renderGrid() {
+            const grid = document.getElementById('main-grid');
+            grid.innerHTML = '';
+            
+            if (tracks.length > 0) {
+                const vid = tracks[0].youtube_id || 'dQw4w9WgXcQ'; // graceful fallback
+                document.getElementById('yt-player').src = `https://www.youtube.com/embed/${vid}`;
+                document.getElementById('yt-external-link').href = `https://www.youtube.com/watch?v=${vid}`;
+            }
+
+            tracks.forEach((track, index) => {
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                
+                const bgGradient = colorPalettes[index % colorPalettes.length];
+                
+                tile.innerHTML = `
+                    <div class="art-box" style="background: ${bgGradient}">
+                        🎵
+                        <div class="duration-badge">${track.duration}</div>
+                        <div class="play-overlay">
+                            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        </div>
+                    </div>
+                    <h3>${track.song}</h3>
+                    <p>${track.artist}</p>
+                `;
+                
+                const playTrack = () => {
+                    if (tile.classList.contains('active')) return;
+                    document.querySelectorAll('.tile').forEach(t => t.classList.remove('active'));
+                    tile.classList.add('active');
+                    const vid = track.youtube_id || 'dQw4w9WgXcQ'; // fallback
+                    document.getElementById('yt-player').src = `https://www.youtube.com/embed/${vid}?autoplay=1`;
+                    document.getElementById('yt-external-link').href = `https://www.youtube.com/watch?v=${vid}`;
+                };
+
+                tile.onclick = playTrack;
+                // Removed tile.onmouseenter to prevent the iframe from constantly reloading while moving the mouse
+
+                grid.appendChild(tile);
+            });
+        }
+        
+        renderGrid();
+    </script>
+</body>
+</html>
