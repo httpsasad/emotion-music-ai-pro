@@ -4,7 +4,7 @@ An advanced AI-powered emotion recognition and intelligent music recommendation 
 
 ---
 
-## 🚀 Features
+##  Features
 
 * 🎭 Real-Time Emotion Detection
 * 🎵 Smart Music Recommendation Engine
